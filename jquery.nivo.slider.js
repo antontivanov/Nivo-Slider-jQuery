@@ -9,9 +9,13 @@
 
 (function($) {
     var NivoSlider = function(element, options){
+		
+		var MOBILE_MODE = 'mobile';
+		var DESKTOP_MODE = 'desktop';
+		
         // Defaults are below
         var settings = $.extend({}, $.fn.nivoSlider.defaults, options);
-
+		
         // Useful variables. Play carefully.
         var vars = {
             currentSlide: 0,
@@ -20,36 +24,118 @@
             running: false,
             paused: false,
             stop: false,
-            controlNavEl: false
+            controlNavEl: false,
+			mode: $(window).width() > settings.mobileBreakpoint ? DESKTOP_MODE : MOBILE_MODE,
+			isFirstLoad: true
         };
 
         // Get this slider
         var slider = $(element);
-        slider.data('nivo:vars', vars).addClass('nivoSlider');
+        slider.data('nivo:vars', vars).addClass('nivoSlider');		
 
+		var kids;
+		
         // Find our slider children
-        var kids = slider.children();
-        kids.each(function() {
-            var child = $(this);
-            var link = '';
-            if(!child.is('img')){
-                if(child.is('a')){
-                    child.addClass('nivo-imageLink');
-                    link = child;
-                }
-                child = child.find('img:first');
-            }
-            // Get img width & height
-            var childWidth = (childWidth === 0) ? child.attr('width') : child.width(),
-                childHeight = (childHeight === 0) ? child.attr('height') : child.height();
+		function loadKids() {
+			
+			kids = slider.children()
+				.filter(function() {
+					
+					return $(this).is('a,img');
+				}).not('.nivo-main-image');
+			
+			kids.each(function() {
+				
+				var child = $(this);
+				var link = '';
+				
+				if(!child.is('img')){
+					
+					if(child.is('a')){
+						
+						child.addClass('nivo-imageLink');
+						link = child;
+					}
+					
+					child = child.find('img:first');
+				}
+				
+				// Get img width & height
+				var childWidth = (childWidth === 0) ? child.attr('width') : child.width(),
+					childHeight = (childHeight === 0) ? child.attr('height') : child.height();
 
-            if(link !== ''){
-                link.css('display','none');
-            }
-            child.css('display','none');
-            vars.totalSlides++;
-        });
-         
+				if(link !== ''){
+					
+					link.css('display','none');
+				}
+				
+				child.css('display','none');
+				
+				if(vars.isFirstLoad){
+					
+					vars.totalSlides++;
+				}
+			});			
+			
+		}
+		
+		function prepareKids() {
+						
+			if(vars.isFirstLoad) {
+				
+				loadKids();
+				
+				vars.isFirstLoad = false;
+			} else {
+				
+				lazyLoadKids();
+			}	
+		}
+		
+		function loadImagesBasedOnPageWidth(pageWidth) {
+			
+			if(pageWidth > settings.mobileBreakpoint) {
+				
+				if(vars.mode !== DESKTOP_MODE || vars.isFirstLoad) {
+					
+					vars.mode = DESKTOP_MODE;
+					
+					prepareKids();
+				}				
+			} else {
+				
+				if(vars.mode !== MOBILE_MODE || vars.isFirstLoad) {
+					
+					vars.mode = MOBILE_MODE;
+					
+					prepareKids();
+				}
+			}
+		}
+		
+		function lazyLoadKids() {
+			
+			kids.each(function() {
+				
+				var imagePath, thumbPath;
+				
+				var child = $(this).is('img') ? $(this) : $(this).find('img:first');
+			
+				imagePath = child.attr('data-' + vars.mode + 'Image'); 
+				imagePath = imagePath ? imagePath : child.attr('data-desktopImage');
+				
+				thumbPath = child.attr('data-' + vars.mode + 'Thumb'); 
+				thumbPath = thumbPath ? thumbPath : child.attr('data-desktopThumb');
+				
+				child.attr('src', imagePath);
+				child.attr('data-thumb', thumbPath);				
+			});
+			
+			loadKids();
+		}
+		
+		loadImagesBasedOnPageWidth($(window).width());
+		
         // If randomStart
         if(settings.randomStart){
             settings.startSlide = Math.floor(Math.random() * vars.totalSlides);
@@ -616,11 +702,16 @@
         };
         
         // Trigger the afterLoad callback
-        settings.afterLoad.call(this);
+        settings.afterLoad.call(this);		
+		
+		$(window).on('resize', function() {
+			
+			loadImagesBasedOnPageWidth($(window).width());
+		});        
         
         return this;
     };
-        
+	
     $.fn.nivoSlider = function(options) {
         return this.each(function(key, value){
             var element = $(this);
@@ -649,6 +740,7 @@
         manualAdvance: false,
         prevText: 'Prev',
         nextText: 'Next',
+		mobileBreakpoint: 800,
         randomStart: false,
         beforeChange: function(){},
         afterChange: function(){},
