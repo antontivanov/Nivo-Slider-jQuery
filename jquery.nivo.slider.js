@@ -12,6 +12,9 @@
 		
 		var MOBILE_MODE = 'mobile';
 		var DESKTOP_MODE = 'desktop';
+		var LAZY_LOAD_ATTRIBUTE = 'data-imageLazyLoaded';
+		var MAIN_IMAGE_SELECTOR = '.nivo-main-image';
+		
 		
         // Defaults are below
         var settings = $.extend({}, $.fn.nivoSlider.defaults, options);
@@ -42,7 +45,7 @@
 				.filter(function() {
 					
 					return $(this).is('a,img');
-				}).not('.nivo-main-image');
+				}).not(MAIN_IMAGE_SELECTOR);
 			
 			kids.each(function() {
 				
@@ -128,7 +131,14 @@
 				thumbPath = thumbPath ? thumbPath : child.attr('data-desktopThumb');
 				
 				child.attr('src', imagePath);
-				child.attr('data-thumb', thumbPath);				
+				child.attr('data-thumb', thumbPath);			
+
+				var isImageLazyLoaded = child.attr(LAZY_LOAD_ATTRIBUTE) === 'true';
+				
+				if(!isImageLazyLoaded && !child.hasClass(MAIN_IMAGE_SELECTOR)) {
+					
+					child.attr(LAZY_LOAD_ATTRIBUTE, 'true');
+				}
 			});
 			
 			loadKids();
@@ -711,7 +721,38 @@
 		settings.afterLoad = function () {
 			
 			clientsAfterLoadFunction();
-			lazyLoadKids();
+			
+			var lazyLoadSliderImages = function () { 
+			
+				var sliderKids = slider.children();
+				var sliderMainImage = sliderKids.find(function() {
+					
+					return $(this).is(MAIN_IMAGE_SELECTOR);
+				});
+				
+				var pageScrollPosition = $(window).scrollTop() + $(window).height();
+				var mainImageScrollPosition = slider.offset().top;
+				var scrollPositionDifference = pageScrollPosition - mainImageScrollPosition;
+				
+				//TODO: Make a setting out of this (threshold) 
+				var isPositionThresholdPassed = Math.abs(scrollPositionDifference) < 100 || pageScrollPosition > mainImageScrollPosition;
+				var areImagesLazyLoaded = sliderKids.filter(function() {
+					
+					return $(this).attr(LAZY_LOAD_ATTRIBUTE) === 'true';
+				}).length > 0;
+				
+				if(isPositionThresholdPassed && !areImagesLazyLoaded) {				
+				
+					lazyLoadKids();
+				}
+			}
+			
+			lazyLoadSliderImages();
+			
+			$(window).on('scroll', function () {
+				
+				lazyLoadSliderImages();
+			});
 		};
         
         // Trigger the afterLoad callback
