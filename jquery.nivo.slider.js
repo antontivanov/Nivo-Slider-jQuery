@@ -673,7 +673,12 @@
                     timeBuff += 100;
                 }
             }           
-        };
+        };		
+		
+		$(window).on('resize', function() {
+			
+			loadImagesBasedOnPageWidth($(window).width());
+		});    
         
         // Shuffle an array
         var shuffle = function(arr){
@@ -700,15 +705,18 @@
                 trace('Start Slider');
             }
         };
+		
+		var clientsAfterLoadFunction = settings.afterLoad; 
+		
+		settings.afterLoad = function () {
+			
+			clientsAfterLoadFunction();
+			lazyLoadKids();
+		};
         
         // Trigger the afterLoad callback
-        settings.afterLoad.call(this);		
-		
-		$(window).on('resize', function() {
-			
-			loadImagesBasedOnPageWidth($(window).width());
-		});        
-        
+        settings.afterLoad.call(this);
+		        
         return this;
     };
 	
