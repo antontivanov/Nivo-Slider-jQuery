@@ -116,6 +116,18 @@
 			}
 		}
 		
+		function loadCorrectImageForChild(child) {
+			
+			imagePath = child.attr('data-' + vars.mode + 'Image'); 
+			imagePath = imagePath ? imagePath : child.attr('data-desktopImage');
+			
+			thumbPath = child.attr('data-' + vars.mode + 'Thumb'); 
+			thumbPath = thumbPath ? thumbPath : child.attr('data-desktopThumb');
+			
+			child.attr('src', imagePath);
+			child.attr('data-thumb', thumbPath);
+		}
+		
 		function lazyLoadKids() {
 			
 			kids.each(function() {
@@ -124,14 +136,7 @@
 				
 				var child = $(this).is('img') ? $(this) : $(this).find('img:first');
 			
-				imagePath = child.attr('data-' + vars.mode + 'Image'); 
-				imagePath = imagePath ? imagePath : child.attr('data-desktopImage');
-				
-				thumbPath = child.attr('data-' + vars.mode + 'Thumb'); 
-				thumbPath = thumbPath ? thumbPath : child.attr('data-desktopThumb');
-				
-				child.attr('src', imagePath);
-				child.attr('data-thumb', thumbPath);			
+				loadCorrectImageForChild(child)
 
 				var isImageLazyLoaded = child.attr(LAZY_LOAD_ATTRIBUTE) === 'true';
 				
@@ -156,12 +161,31 @@
             if(settings.startSlide >= vars.totalSlides) { settings.startSlide = vars.totalSlides - 1; }
             vars.currentSlide = settings.startSlide;
         }
+		
+		function loadInitialImage(child){ 
+		
+			var pageWidth = $(window).width();
+			
+			loadCorrectImageForChild(child); 
+			
+			
+		}
         
         // Get initial image
         if($(kids[vars.currentSlide]).is('img')){
-            vars.currentImage = $(kids[vars.currentSlide]);
+			
+			var child = $(kids[vars.currentSlide]);
+			
+			loadCorrectImageForChild(child);
+			
+            vars.currentImage = child;
         } else {
-            vars.currentImage = $(kids[vars.currentSlide]).find('img:first');
+			
+			var child = $(kids[vars.currentSlide]).find('img:first');
+			
+			loadCorrectImageForChild(child);
+			
+            vars.currentImage = child;
         }
         
         // Show initial link
@@ -716,11 +740,13 @@
             }
         };
 		
-		var clientsAfterLoadFunction = settings.afterLoad; 
+		var clientsDefinedAfterLoad = settings.afterLoad; 
 		
 		settings.afterLoad = function () {
 			
-			clientsAfterLoadFunction();
+			clientsDefinedAfterLoad();
+			
+			var sliderId = slider.attr('id');
 			
 			var lazyLoadSliderImages = function () { 
 			
@@ -732,16 +758,23 @@
 				
 				var pageScrollPosition = $(window).scrollTop() + $(window).height();
 				var mainImageScrollPosition = slider.offset().top;
-				var scrollPositionDifference = pageScrollPosition - mainImageScrollPosition;
+				
+				var scrollPositionBottomDifference = pageScrollPosition - mainImageScrollPosition;
 				
 				//TODO: Make a setting out of this (threshold) 
-				var isPositionThresholdPassed = Math.abs(scrollPositionDifference) < 100 || pageScrollPosition > mainImageScrollPosition;
+				var isPositionThresholdPassed = Math.abs(scrollPositionBottomDifference) < 100 || pageScrollPosition > mainImageScrollPosition;
 				var areImagesLazyLoaded = sliderKids.filter(function() {
 					
 					return $(this).attr(LAZY_LOAD_ATTRIBUTE) === 'true';
 				}).length > 0;
 				
-				if(isPositionThresholdPassed && !areImagesLazyLoaded) {				
+				if(areImagesLazyLoaded) {
+					
+					$(window).off('scroll.nivoSlider' + sliderId); 
+					
+				}
+				
+				if(isPositionThresholdPassed) {				
 				
 					lazyLoadKids();
 				}
@@ -749,7 +782,7 @@
 			
 			lazyLoadSliderImages();
 			
-			$(window).on('scroll', function () {
+			$(window).on('scroll.nivoSlider' + sliderId, function () {
 				
 				lazyLoadSliderImages();
 			});
